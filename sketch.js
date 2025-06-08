@@ -2681,7 +2681,7 @@ var drawLine = function(lin,lightable){
         return(true);
     }
     return(false);
-}; // drawLine(v1:{x,y,z},v2:{x,y,z},rad,col},false)
+}; // drawLine({v1:{x,y,z},v2:{x,y,z},rad,col},false)
 
 var drawFloor = function(y,col,lightable){
     if(lightable===undefined){
@@ -3324,6 +3324,119 @@ var drawBody = function(bodyFrame,cols,depthHackMag){
     if(drawArm(bodyFrame.rightShoulder,bodyFrame.rightElbow,bodyFrame.rightHand,cols[3],true)&&depthHackMag){
         graphics[graphics.length-1].depth-=depthHackMag*2;
     }
+};
+
+var drawHotAirBalloon = function(x,y,z,rad,azimuth,cols,lightable){
+    var layers = 10;
+    var layerSides = cols.length||10;
+    
+    if(lightable===undefined){
+        lightable=true;
+    }
+    
+    var complexAzimuth = angToComplex(azimuth);
+    
+    var processedCoordData = [];
+    var lowestCoord, penY, penLevelRad;
+    for(var l = 0; l<layers; l++){
+        var levelY = 2*pow((l+1+0.3*(l===0)-0.3*(l===layers-1))/(layers),0.55)-1;
+        for(var ang = 0; ang<360-0.0001; ang+=360/layerSides){
+            var i = processedCoordData.length;
+            var levelRad = rad*cos(l/(layers-1)*180-90);
+            var useAng = ang;
+            if(cols.length){
+                useAng+=((cols[i%cols.length][2]%7)*(cols[i%cols.length][1]%13)%11)*0.08*360/layerSides;
+            }
+
+            processedCoordData[i]={
+                x:levelRad*cos(useAng),
+                y:1.7*rad*levelY,
+                z:levelRad*sin(useAng),
+            };
+
+            complexRotateAzimuth(processedCoordData[i],complexAzimuth);
+            processedCoordData[i].x+=x;
+            processedCoordData[i].y+=y;
+            processedCoordData[i].z+=z;
+            if(!l){
+                lowestCoord = pCopy(processedCoordData[i]);
+            }
+            if(l===1){
+                penY = processedCoordData[i].y;
+                penLevelRad = levelRad;
+            }
+            complexAdjustPointForCamera(processedCoordData[i]);            
+            // if(l===1){
+            //     processedCoordData[i-layerSides] = vScale(vAdd(processedCoordData[i],processedCoordData[i-layerSides]),0.5);
+            // } // sketchy to do this after transforms
+        }
+    }
+    
+    if(col===undefined){col=[255,0,255,170+75*sin(ganime*3)];}
+    var graphicGroup = {
+        lightable:lightable,
+        depth:-1,
+        primitives:[],
+        needsSorting:false,
+    };
+    for(var l = 0; l<layers-1; l++){
+        for(var i = 0; i<layerSides; i++){
+            var col = cols[i] || [255,0,0,255];
+            var qua = {
+                v1:pCopy(processedCoordData[l*layerSides+i]),
+                v2:pCopy(processedCoordData[(l+1)*layerSides+i]),
+                v3:pCopy(processedCoordData[(l+1)*layerSides+(i+1)%layerSides]),
+                v4:pCopy(processedCoordData[l*layerSides+(i+1)%layerSides]),
+                col:[col[0],col[1],col[2],col[3]],
+                type:"qua"
+                // no shading
+            };
+            if(l===layers-2){
+                var swap = pCopy(qua.v2);
+                qua.v2 = pCopy(qua.v4);
+                qua.v4 = swap;
+                swap = pCopy(qua.v3);
+                qua.v3 = pCopy(qua.v1);
+                qua.v1 = swap;
+            }
+            var isVisible = false;
+            if(vDotProduct(threePointNormal(qua),quaCenter(qua))<0){isVisible=true;}
+            
+            /*
+            var qc = quaCenter(qua);
+            if(vDotProduct(threePointNormal(qua),qc)<0){isVisible=true;}
+            else if(vDotProduct(threePointNormal({v1:qua.v2,v2:qua.v3,v3:qua.v4}),qc)<0){isVisible=true;}
+            else if(vDotProduct(threePointNormal({v1:qua.v3,v2:qua.v4,v3:qua.v1}),qc)<0){isVisible=true;}
+            else if(vDotProduct(threePointNormal({v1:qua.v4,v2:qua.v1,v3:qua.v2}),qc)<0){isVisible=true;}
+            */
+            if(isVisible){
+                if(quaHasPositiveZVertex(qua)){
+                    graphicGroup.primitives.push(qua);
+                    var d = distOriginToQua(qua);
+                    if(graphicGroup.depth===-1||d<graphicGroup.depth){
+                        graphicGroup.depth=d;
+                    }
+                }
+            }
+        }
+    }
+
+
+    // for(var ang = 0; ang<360; ang+=90){
+    //     drawLine({
+    //         v1:{x:x+penLevelRad*cos(ang),y:penY,z:z+penLevelRad*sin(ang)},
+    //         v2:{x:x+0.8*penLevelRad*cos(ang),y:penY-20,z:z+0.8*penLevelRad*sin(ang)},
+    //         rad:1,
+    //         col:[0,0,255,255],
+    //     },false);
+    // }
+
+    
+    if(graphicGroup.primitives.length){
+        graphics.push(graphicGroup);
+        return true;
+    }
+    return false;
 };
 
 var drawT3dLogo = function(x,y,s,time,blackBackground){
@@ -4038,7 +4151,7 @@ var Pole = function(x,y,z,rad,h,azimuth,col){
 }; // use instead of surfacePillar when hitbox have lower bound
 Pole.prototype.draw = function(){
     //drawModel(cubeModel,this.x,this.y,this.z,this.l,this.h,this.w,this.azimuth,0,0,this.col,true);
-    drawModel(octoCylinderModel,this.x,this.y,this.z,this.rad,this.h,this.rad,this.azimuth,0,0,this.col,true);
+    return drawModel(octoCylinderModel,this.x,this.y,this.z,this.rad,this.h,this.rad,this.azimuth,0,0,this.col,true);
 };
 Pole.prototype.makeCollider = function(){
     colliders.push({idTag:-1,
@@ -8276,7 +8389,7 @@ Level.new(
     }
 ),
 Level.new(
-    "Chaos and Violence",
+    "Zombies or Robots or Something",
     function(){
         resetPlayerAndCameraTo(-6,0,12, 220,0,0);
         
@@ -8367,7 +8480,6 @@ Level.new(
         this.t3dVertices = [];
         resetPlayerAndCameraTo(-4.1,0,0.4, 305,-11,0);
         
-        //var Pole = function(x,y,z,rad,h,azimuth,col){
         solids.push(Block.new(1.5,-1.5*this.screenModelSize+1.6,14,1.4,1.6,1.8,55,[100,0,240]));
         solids.push(Pole.new(-1.5,-1.5*this.screenModelSize+0.8,10.5,1.3,0.8,10,[240,100,0]));
         
@@ -9039,89 +9151,6 @@ Level.new(
     }
 ),
 Level.new(
-    "Chaos and Violence",
-    function(){
-        resetPlayerAndCameraTo(-6,0,12, 220,0,0);
-        
-        player.holding = "small gun";
-        solids.push(MediumTree.new(0,0,10,2,0,90,25,2.5,71,[45,45,45],[245,55,55],25));
-        for(var i = 0; i<10; i++){
-            var next = makeMannequinClone(mannequinTemplates.zombie);
-            next.x=random(-20,20);
-            next.z=random(-50,-10);
-            mannequins.push(next);
-        }
-        for(var i = 0; i<8; i++){
-            solids.push(Block.new(0,0.5+i,-2-7*i,1,0.5+i,1,0,[50+30*i,50,50,255]));
-        }
-        for(var i = 0; i<mannequins.length; i++){
-            mannequins[i].onStart();
-        }
-    },
-    function(){
-        graphics = []; graphicOrders = []; lightSources = []; lightVectors = []; colliders = [];
-        
-        for(var i = 0; i<solids.length; i++){
-            solids[i].makeCollider();
-        }
-        for(var i = 0; i<mannequins.length; i++){
-            mannequins[i].makeCollider();
-        }
-        colliders.push({idTag:-1,x:0,y:0,z:0,planeNorm:{x:0,y:1,z:0},type:"slp",giveJumpFunc:giveJump,});// floor
-        
-        playerAndCameraManagement();
-        
-        createLightVector({x:0.1,y:-1,z:0.2},1,0.1);
-        drawLattice(0,5,7,0.6,[70,70,80,160],false);
-        drawFloor(-0.000001,[75,75,85],false);
-        
-        for(var i = 0; i<solids.length; i++){
-            solids[i].draw();
-        }
-        for(var i = 0; i<mannequins.length; i++){
-            mannequins[i].exist();
-            if(mannequins[i].testDeath()){mannequins.splice(i,1);i--;}
-        }
-        for(var i = 0; i<oiers.length; i++){
-            oiers[i].exist();
-            if(oiers[i].testDeath()){oiers.splice(i,1);i--;}
-        }
-        
-        
-        
-        
-        if(player.pov===1){
-            player.animate();
-            player.draw(0,0.4);
-        }
-        else if(player.pov===2){
-            player.animate();
-            player.draw(0);
-        }
-        else if(player.pov>=3){
-            player.animate();
-            player.draw(0.4);
-        }
-        
-        push(); translate(width/2,height/2); scale(1,-1); noStroke();
-        background(100,200,255);
-        displayGraphics();
-        if(player.pov===1){drawCrossHair();}
-        pop();
-    },
-    function(){
-        oiers = [];
-        solids = [];
-        items = [];
-        mannequins = [];
-        portals = [];
-        for(var i = 0; i<mannequins.length; i++){
-            mannequins[i].onEnd();
-        }
-        player.holding = "nothing";
-    }
-),
-Level.new(
     "Boids",
     function(){
         this.popupTimer = 1000;
@@ -9254,13 +9283,300 @@ Level.new(
         portals = [];
     }
 ),
+Level.new(
+    "Hot Air Balloon",
+    function(){
+        resetPlayerAndCameraTo(0,12.5,-60, 0,10,0);
+
+        this.given = false; // boost gift
+        this.cancelJump = 0;
+        this.hab = {x:0,y:40.4,z:140};
+        this.habSeat = Pole.new(this.hab.x,this.hab.y-33.3,this.hab.z,5,3.6,0,[220,180,115,255]);
+        this.habBarrier = Pole.new(this.hab.x,this.hab.y-25,this.hab.z,2.3,4.5,0,[0,0,0,200]);
+        // this.habBarrier2 = Pole.new(this.hab.x,this.hab.y-25,this.hab.z,5.3,2.2,0,[0,0,0,200]);
+        
+        // solids.push(Block.new(22,0.1,7,4.5,0.1,2,20,[0,0,55,255]));
+    },
+    function(){
+        graphics = [];
+        graphicOrders = [];
+        lightSources = [];
+        lightVectors = [];
+        colliders = [];
+
+        if(inp[32]&&dist(player.x,player.z,this.hab.x,this.hab.z)<5.55&&player.y>this.habSeat.y){
+            this.habSeat.y = max(this.habSeat.y,player.y+player.yv-this.habSeat.h);
+            this.hab.y = this.habSeat.y+33.3;
+            this.habBarrier.y = this.hab.y-25;
+            this.cancelJump = 2;
+        }
+        
+        if(player.z>this.hab.z-50&&(player.z>this.hab.z+10||!this.given)){
+            if(player.inv.boosts===0){
+                player.inv.boosts++;
+                this.given = true;
+            }
+        }
+
+        for(var i = 0; i<solids.length; i++){
+            solids[i].makeCollider();
+        }
+        this.habSeat.makeCollider();
+        this.habBarrier.makeCollider();
+        this.habSeat.prevy = this.habSeat.y;
+        this.habBarrier.prevy = this.habBarrier.y;
+        // this.habBarrier2.makeCollider();
+        
+        // colliders.push({idTag:-1,
+        //     x:0,y:0,z:0,
+        //     planeNorm:{x:0,y:1,z:1},
+        //     type:"slp",
+        //     giveJumpFunc:giveJump,
+        // }); // slope collider
+        colliders.push({idTag:-1,
+            x:0,y:0,z:0,
+            planeNorm:{x:0,y:1,z:0},
+            type:"slp",
+            giveJumpFunc:giveJump,
+        }); // floor collider
+        colliders.push({idTag:-1,
+            x:0,y:0,z:0,
+            planeNorm:{x:0,y:5,z:1},
+            type:"slp",
+            giveJumpFunc:giveJump,
+        }); // slope collider
+        
+        
+
+        player.drift();
+        player.makeCollider();
+        player.canJump--;
+        if(player.canJump<0.0001){player.canJump=0;}
+        player.interactWithColliders();
+        
+        if(inp[220]){player.canJump=1;}
+        player.operate();
+        player.gravity(0.015);
+
+        
+
+        if(this.cancelJump>0){
+            if(!inp[32]){
+                player.yv = min(player.yv,0);
+                if(dist(player.x,player.z,this.hab.x,this.hab.z)<5.55&&player.y>this.habSeat.y){
+                    player.y = this.habSeat.y+this.habSeat.h;
+                }
+            }
+            this.cancelJump--;
+        }
+
+        
+        c.syncToPlayer();
+        c.viewControl();
+        c.getComplexes();
+        // if(c.canResetFOV){c.adjustFOVToRanges(1,1);}
+        if(c.canResetFOV){c.adjustFOVToRanges(width/height,1);}
+        c.customPlanes=[];
+        
+        if(player.boostCooldown>0){
+            player.boostCooldown--;
+            if(player.boostCooldown>10){
+                player.yv = 0.35;
+            }
+        }
+        else if(inp[16]&&player.inv.boosts>0){
+            player.boostCooldown = 35;
+            player.inv.boosts--;
+            player.xv*=1.1;
+            player.zv*=1.1;
+            playNote(23,0,random(0.5,0.6),0,100,0.4);
+        }
+        createLightVector({x:0.1,y:-1,z:0.2},1,0.1);
+        
+        // drawLattice(0,5,7,0.6,[125,155,80,100],false);
+
+        drawFloor(-0.000001,[141,170,95],false);
+        if(drawQuad({
+            v1:{x:c.x-1e10*(c.y+1),y:0,z:0},
+            v2:{x:c.x+1e10*(c.y+1),y:0,z:0},
+            v3:{x:c.x+1e10*(c.y+1),y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            v4:{x:c.x-1e10*(c.y+1),y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            col:[133,163,88],
+        },true)){graphics[graphics.length-1].depth=1e10;}
+        
+        for(var i = -9; i<=9; i++){
+            if(i===0) continue;
+            if(drawQuad({
+                v1:{x:-6+i*28,y:0,z:0},
+                v2:{x:6+i*28,y:0,z:0},
+                v3:{x:6+i*28,y:0,z:5e10},
+                v4:{x:-6+i*28,y:0,z:5e10},
+                col:[131,160,85,255-abs(i)*21],
+            },true)){graphics[graphics.length-1].depth=2e9;}
+            if(drawQuad({
+                v1:{x:-6+i*28,y:0,z:0},
+                v2:{x:6+i*28,y:0,z:0},
+                v3:{x:6+i*28,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+                v4:{x:-6+i*28,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+                col:[123,153,78,255-abs(i)*21],
+            },true)){graphics[graphics.length-1].depth=2e9;}
+
+        }
+
+
+        if(drawQuad({
+            v1:{x:-9,y:0,z:0},
+            v2:{x:9,y:0,z:0},
+            v3:{x:9,y:0,z:5e10},
+            v4:{x:-9,y:0,z:5e10},
+            col:[50,50,60],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+        if(drawQuad({
+            v1:{x:-9,y:0,z:0},
+            v2:{x:9,y:0,z:0},
+            v3:{x:9,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            v4:{x:-9,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            col:[45,45,55],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+        if(drawQuad({
+            v1:{x:-8,y:0,z:0},
+            v2:{x:8,y:0,z:0},
+            v3:{x:8,y:0,z:5e10},
+            v4:{x:-8,y:0,z:5e10},
+            col:[105,105,115],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+        if(drawQuad({
+            v1:{x:-8,y:0,z:0},
+            v2:{x:8,y:0,z:0},
+            v3:{x:8,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            v4:{x:-8,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            col:[95,95,105],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+        if(drawQuad({
+            v1:{x:-0.25,y:0,z:0},
+            v2:{x:0.25,y:0,z:0},
+            v3:{x:0.25,y:0,z:5e10},
+            v4:{x:-0.25,y:0,z:5e10},
+            col:[177,158,83,255],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+        if(drawQuad({
+            v1:{x:-0.25,y:0,z:0},
+            v2:{x:0.25,y:0,z:0},
+            v3:{x:0.25,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            v4:{x:-0.25,y:1e10+(c.y+1),z:-5e10-(c.y+1)},
+            col:[167,148,73,255],
+        },true)){graphics[graphics.length-1].depth=1e9;}
+
+
+
+        let habDepth = -1;
+        if(drawHotAirBalloon(this.hab.x,this.hab.y,this.hab.z,50,165,[
+            [215,93,78,255],
+            [235,109,87,255],
+            [159,69,71,255],
+            [175,165,200,255], // light grey
+            [104,102,176,255], // blue
+            [202,50,121,255], // purple
+            [235,109,87,255],
+            [215,93,78,255],
+            [227,196,90,255], // yellow
+            [215,93,78,255],
+            [180,210,90,255], // lime
+            [235,109,87,255],
+            [215,93,78,255],
+            [175,165,200,255], // light grey
+            [235,109,87,255],
+            [159,69,71,255],
+            [104,102,176,255], // blue
+            [235,109,87,255],
+            [159,69,71,255],
+            [235,109,87,255],
+            [159,69,71,255],
+            [227,196,90,255],
+            [159,69,71,255], // dark red
+        ],true)){
+            habDepth = graphics[graphics.length-1].depth;
+        }
+
+        
+        for(var i = 0; i<solids.length; i++){
+            solids[i].draw();
+        }
+        if(this.habSeat.draw()){
+            if(habDepth!==-1){
+                graphics[graphics.length-1].depth=habDepth+0.01-0.02*(c.y<this.habSeat.y+this.habSeat.h);
+            }
+        }
+
+        
+        drawSun(1e7,7.5e5,8,-72,28,50,[125,145,185,255],false);
+        drawSun(1e7,8e5,10,-69,35,50,[130,150,190,255],false);
+        drawSun(1e7,6e5,6,-65,30,50,[120,140,180,255],false);
+        
+        drawSun(1e7,7e5,8,-46,19,50,[125,145,185,255],false);
+        drawSun(1e7,6e5,6,-36,20,50,[120,140,180,255],false);
+        drawSun(1e7,8.5e5,10,-39,16,50,[130,150,190,255],false);
+
+        drawSun(1e7,6e5,6,30,25,50,[120,140,180,255],false);
+        drawSun(1e7,8e5,10,40,20,50,[130,150,190,255],false);
+        drawSun(1e7,7e5,8,24,23,50,[125,145,185,255],false);
+
+        drawSun(1e7,8.5e5,10,48,40,50,[130,150,190,255],false);
+        drawSun(1e7,7e5,8,66,40,50,[125,145,185,255],false);
+        drawSun(1e7,6e5,6,70,42,50,[120,140,180,255],false);
+
+        drawSun(1e7,7e5,8,136,38,50,[125,145,185,255],false);
+        drawSun(1e7,6.5e5,6,142,42,50,[120,140,180,255],false);
+        drawSun(1e7,8e5,10,105,18,50,[130,150,190,255],false);
+        drawSun(1e7,7.5e5,10,100,14,50,[120,140,180,255],false);
+        
+        drawSun(1e7,8.5e5,10,-105,23,50,[120,140,180,255],false);
+
+        drawSun(1e7,6.5e5,6,-150,58,50,[130,150,190,255],false);
+        
+        if(player.pov===2){
+            player.animate();
+            player.draw(0);
+        }
+        else if(player.pov>=3){
+            player.animate();
+            player.draw(0.4);
+        }
+        
+        push();
+        translate(width/2,height/2);
+        scale(1,-1);
+        background(65,125,200);
+        noStroke();
+        
+        displayGraphics();
+        
+        if(player.pov===1){
+            drawCrossHair();
+        }
+        
+        pop();
+
+        for(var i = 0; i<player.inv.boosts&&i<50; i++){
+            drawBoostIcon(50+i*40,height-55,20);  
+        }
+        
+    },
+    function(){
+        oiers = [];
+        solids = [];
+        items = [];
+        mannequins = [];
+    }
+),
+
 ];
   
   wMap.units = [
 
   wMapUnit.new("demo level",-270,-270,[255,0,0]),
   wMapUnit.new("NPCity",-200,-270,[100,150,200]),
-//   wMapUnit.new("Chaos and Violence",-200,-200,[100,0,0]),
+  wMapUnit.new("Zombies or Robots or Something",-200,-200,[100,0,0]),
   wMapUnit.new("soft level",-130,-270,[180,180,120]),
 
   wMapUnit.new("Trees Don't Die",-200,0),
@@ -9281,15 +9597,14 @@ Level.new(
   wMapUnit.new("Microwave",-270,0,[255,255,190]),
   wMapUnit.new("Infinite Maze",200,-50,[90,100,110]),
   wMapUnit.new("Boids",200,200,[150,0,255]),
+  wMapUnit.new("Hot Air Balloon",200,250,[150,0,255]),
 
   ];
   
-  // skip map: screen = "game"; switchToLevel(levels.length-1);
+  
   screen = "map";
-  // ianime = 100;
-
-
-  /// ~~~~~~ Draw Function Management ~~~~~~ ///
+  // skip map:
+  screen = "game"; switchToLevel(levels.length-1); ianime = 101;
   drawLogoScreen();
 
 }
