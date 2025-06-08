@@ -5756,11 +5756,11 @@ var drawCursor = function(mX,mY,scaleF,colorObj){
 
 var wMap = {
     drawX:0, drawY:0,
-    mX:0+200, mY:0,
+    mX:150+12, mY:100-12,
     units:[],
     onStart:function(){
-        wMap.mX=wMap.drawX+200; // +0
-        wMap.mY=wMap.drawY;
+        wMap.mX=wMap.drawX+150; // +0
+        wMap.mY=wMap.drawY+100;
     },
     whileRunning:function(){
         push();
@@ -6086,10 +6086,10 @@ function setup(){
         this.groundFrictionFactor=this.stats.groundFrictionFactor;
         this.airFrictionFactor=this.stats.airFrictionFactor;
         var relativexa = 0, relativeza = 0;
-        if(inp[87]){relativeza++;}
-        if(inp[65]){relativexa--;}
-        if(inp[83]){relativeza--;}
-        if(inp[68]){relativexa++;}
+        if(inp[87]||inp[UP_ARROW]){relativeza++;}
+        if(inp[65]||inp[LEFT_ARROW]){relativexa--;}
+        if(inp[83]||inp[DOWN_ARROW]){relativeza--;}
+        if(inp[68]||inp[RIGHT_ARROW]){relativexa++;}
         if(relativeza||relativexa){
             var speed;
             /* var isSprinting = inp[16]&&relativeza>0;
@@ -6353,10 +6353,10 @@ function setup(){
         if(inp[32]){c.y+=speed;}
         if(inp[16]){c.y-=speed;}
         var relativexa = 0, relativeza = 0;
-        if(inp[87]){relativeza++;}
-        if(inp[65]){relativexa--;}
-        if(inp[83]){relativeza--;}
-        if(inp[68]){relativexa++;}
+        if(inp[87]||inp[UP_ARROW]){relativeza++;}
+        if(inp[65]||inp[LEFT_ARROW]){relativexa--;}
+        if(inp[83]||inp[DOWN_ARROW]){relativeza--;}
+        if(inp[68]||inp[RIGHT_ARROW]){relativexa++;}
         if(relativeza||relativexa){
             var ang = atan2(relativeza,relativexa)+c.azimuth;
             c.x+=cos(ang)*speed;
@@ -8351,7 +8351,7 @@ Level.new(
         this.screenModelSize = 1.4;
         this.screenModelZ = 3.2;
         this.t3dVertices = [];
-        resetPlayerAndCameraTo(0,0,-4, 0,0,0);
+        resetPlayerAndCameraTo(-4.1,0,0.4, 305,-11,0);
         
         //var Pole = function(x,y,z,rad,h,azimuth,col){
         solids.push(Block.new(1.5,-1.5*this.screenModelSize+1.6,14,1.4,1.6,1.8,55,[100,0,240]));
@@ -9270,9 +9270,8 @@ Level.new(
 
   ];
   
-  // skip map: screen = "game";
+  // skip map: screen = "game"; switchToLevel(levels.length-1);
   screen = "map";
-  switchToLevel(levels.length-1);
   // ianime = 100;
 
 
