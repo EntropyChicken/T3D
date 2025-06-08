@@ -5882,11 +5882,11 @@ var drawCursor = function(mX,mY,scaleF,colorObj){
 
 var wMap = {
     drawX:0, drawY:0,
-    mX:150+12, mY:100-12,
+    mX:175+10, mY:150-10,
     units:[],
     onStart:function(){
-        wMap.mX=wMap.drawX+150; // +0
-        wMap.mY=wMap.drawY+100;
+        wMap.mX=wMap.drawX+175; // +0
+        wMap.mY=wMap.drawY+150; // +0
     },
     whileRunning:function(){
         push();
