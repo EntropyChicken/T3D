@@ -3444,6 +3444,20 @@ var drawT3dLogo = function(x,y,s,time,blackBackground){
         c=oCopy(cUsedToBe);
     }
 };
+var drawLogoScreen = function(){
+    console.log("OK")
+    background(0);
+    drawT3dLogo(width/2,height/2,min(width,height)/5,0);
+    fill(255);
+    push();
+    noStroke();
+    textAlign(CENTER,CENTER);
+    textSize(ceil(min(width,height)/23));
+    //text("Why did I make this logo thing",screenWidth/2,screenWidth/5);
+    text("Click to start",width/2,0.83*height);
+    text("Controls: WASD, space, mouse",width/2,0.77*height);
+    pop();
+}
 
 
 
@@ -9276,22 +9290,12 @@ Level.new(
 
 
   /// ~~~~~~ Draw Function Management ~~~~~~ ///
-
-  background(0);
-  drawT3dLogo(screenWidth/2,screenHeight/2,min(screenWidth,screenHeight)/5,0);
-  fill(255);
-  push();
-  noStroke();
-  textAlign(CENTER,CENTER);
-  textSize(ceil(min(screenWidth,screenHeight)/23));
-  //text("Why did I make this logo thing",screenWidth/2,screenWidth/5);
-  text("Click to start",screenWidth/2,0.83*screenHeight);
-  text("Controls: WASD, space, mouse",screenWidth/2,0.77*screenHeight);
-  pop();
+  drawLogoScreen();
 
 }
 function windowResized() {
 	resizeCanvas(windowWidth,windowHeight);
+    drawLogoScreen();
 }
 
 
