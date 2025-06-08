@@ -9291,6 +9291,10 @@ Level.new(
   pop();
 
 }
+function windowResized() {
+	resizeCanvas(windowWidth,windowHeight);
+}
+
 
 function draw(){
     
