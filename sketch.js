@@ -3445,7 +3445,6 @@ var drawT3dLogo = function(x,y,s,time,blackBackground){
     }
 };
 var drawLogoScreen = function(){
-    console.log("OK")
     background(0);
     drawT3dLogo(width/2,height/2,min(width,height)/5,0);
     fill(255);
@@ -9294,7 +9293,7 @@ Level.new(
 
 }
 function windowResized() {
-	resizeCanvas(windowWidth,windowHeight);
+    resizeCanvas(windowWidth,windowHeight);
     drawLogoScreen();
 }
 
