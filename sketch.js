@@ -9283,10 +9283,10 @@ Level.new(
   push();
   noStroke();
   textAlign(CENTER,CENTER);
-  textSize(ceil(min(screenWidth,screenHeight)/30));
+  textSize(ceil(min(screenWidth,screenHeight)/23));
   //text("Why did I make this logo thing",screenWidth/2,screenWidth/5);
-  text("Click to begin",screenWidth/2,15*screenHeight/20);
-  text("Controls: WASD, space, mouse",screenWidth/2,16*screenHeight/20);
+  text("Click to start",screenWidth/2,0.83*screenHeight);
+  text("Controls: WASD, space, mouse",screenWidth/2,0.77*screenHeight);
   pop();
 
 }
