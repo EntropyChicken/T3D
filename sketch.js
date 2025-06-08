@@ -10,7 +10,7 @@ var ganime = ~~ (6/7/25);
 
 /** ~~~~~~~~~~ Pre-Definitions ~~~~~~~~~~ **/
                     
-var sctpc,c,player,graphics,defaultZoom,roundTo,vLength,origin,main,levels,currentLevel,screen,complexAdjustPointForCamera,screenWidth,screenHeight,mouse;
+var sctpc,c,player,graphics,defaultZoom,roundTo,vLength,origin,main,levels,currentLevel,screen,complexAdjustPointForCamera,width,height,mouse;
                     
 /** ~~~~~~~~~~~ Program Setup ~~~~~~~~~~~ **/
 
@@ -180,7 +180,7 @@ var oCopy = function(obj){
 //                 paused = true;
 //                 fill(180,100);
 //                 noStroke();
-//                 rect(0,0,screenWidth,screenHeight);
+//                 rect(0,0,width,height);
 //             }
 //             return;
 //         }
@@ -3398,11 +3398,11 @@ var drawT3dLogo = function(x,y,s,time,blackBackground){
                 v3 = vAdd(sctpc(quas[1].v3,c),{x:x,y:y}),
                 v4 = vAdd(sctpc(quas[1].v4,c),{x:x,y:y});
             beginShape();
-            vertex(0,screenHeight+s/100);
+            vertex(0,height+s/100);
             vertex(0,0);
-            vertex(screenWidth,0);
-            vertex(screenWidth,screenHeight);
-            vertex(0,screenHeight);
+            vertex(width,0);
+            vertex(width,height);
+            vertex(0,height);
             vertex(v3.x,v3.y);
             vertex(v2.x,v2.y);
             vertex(v1.x,v1.y);
@@ -3452,7 +3452,7 @@ var drawLogoScreen = function(){
     noStroke();
     textAlign(CENTER,CENTER);
     textSize(ceil(min(width,height)/23));
-    //text("Why did I make this logo thing",screenWidth/2,screenWidth/5);
+    //text("Why did I make this logo thing",width/2,width/5);
     text("Click to start",width/2,0.83*height);
     text("Controls: WASD, space, mouse",width/2,0.77*height);
     pop();
@@ -5994,11 +5994,7 @@ main = function(){
 function setup(){
     
 
-    // screenWidth = 600;
-    // screenHeight = 600;
-    screenWidth = windowWidth;
-    screenHeight = windowHeight;
-    createCanvas(screenWidth,screenHeight);
+    createCanvas(windowWidth,windowHeight);
     // textFont("Lucida Console Bold"); // not on p5js...?
     textFont('Verdana');
     strokeJoin(ROUND);  
@@ -6008,10 +6004,10 @@ function setup(){
 
 
     mouse = {
-    x:screenWidth/2,
-    y:screenHeight/2,
-    prevx:screenWidth/2,
-    prevy:screenHeight/2,
+    x:width/2,
+    y:height/2,
+    prevx:width/2,
+    prevy:height/2,
     sensitivity:1,
     status:"idle",
     };
@@ -6034,7 +6030,7 @@ function setup(){
         paused = true; // Cursor unlocked
         fill(180,100);
         noStroke();
-        rect(0,0,screenWidth,screenHeight);
+        rect(0,0,width,height);
     }
     });
 
@@ -6300,8 +6296,8 @@ function setup(){
         elevation:0,
         twist:0,
         zoom:1, // only adjust this one pls
-        zoomScaleX:min(screenWidth,screenHeight)/2,
-        zoomScaleY:min(screenWidth,screenHeight)/2,
+        zoomScaleX:min(width,height)/2,
+        zoomScaleY:min(width,height)/2,
         sidePlaneNormals:[
             {x:-1,y:0,z:1}, // right
             {x:0,y:-1,z:1}, // top
@@ -6313,6 +6309,11 @@ function setup(){
         antiComplexAzimuth:{r:1,i:0},
         antiComplexElevation:{r:1,i:0},
         antiComplexTwist:{r:1,i:0},
+    };
+    c.syncToWidthHeight = function(){
+        c.zoomScaleX = min(width,height)/2;
+        c.zoomScaleY = min(width,height)/2;
+        c.adjustFOVToRanges(width/height,1);
     };
     c.adjustFOVToAngs = function(azimuthRange,elevationRange){
         c.sidePlaneNormals = [
@@ -7958,7 +7959,7 @@ Level.new(
         pop();
         
         for(var i = 0; i<player.inv.boosts&&i<50; i++){
-            drawBoostIcon(50+i*40,screenHeight-55,20);  
+            drawBoostIcon(50+i*40,height-55,20);  
         }
         noStroke();
         textSize(24);
@@ -9013,7 +9014,7 @@ Level.new(
 
         
         for(var i = 0; i<player.inv.boosts&&i<50; i++){
-            drawBoostIcon(50+i*40,screenHeight-55,20);  
+            drawBoostIcon(50+i*40,height-55,20);  
         }
         noStroke();
         textSize(24);
@@ -9294,7 +9295,11 @@ Level.new(
 }
 function windowResized() {
     resizeCanvas(windowWidth,windowHeight);
-    drawLogoScreen();
+    c.syncToWidthHeight();
+    // checking if paused makes behavior weird with multiple resizings
+    if(paused){
+        drawLogoScreen();
+    }
 }
 
 
@@ -9309,13 +9314,13 @@ function draw(){
             paused = true;
             fill(180,100);
             noStroke();
-            rect(0,0,screenWidth,screenHeight);
+            rect(0,0,width,height);
             fill(0);
             textSize(60);
             textAlign(CENTER,CENTER);
-            text("Program Paused",screenWidth/2,screenWidth/3);
+            text("Program Paused",width/2,width/3);
             textSize(30);
-            text("Because delta time was\nunnaturally high: "+roundTo(dt,3),screenWidth/2,2*screenWidth/3);
+            text("Because delta time was\nunnaturally high: "+roundTo(dt,3),width/2,2*width/3);
         } // large lag or frame drop from tab switch
         else{*/
         if(ianime<=100){
@@ -9331,7 +9336,7 @@ function draw(){
                 c.adjustFOVToRanges(width/height,1);
                 // just in case it breaks or smth make sure it can auto FOV from there
             }
-            drawT3dLogo(screenWidth/2,screenHeight/2,min(screenWidth,screenHeight)/5,ianime,true);
+            drawT3dLogo(width/2,height/2,min(width,height)/5,ianime,true);
             // ianime+=1;
             ianime+=2;
         } // intro animation
