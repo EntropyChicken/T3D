@@ -9293,6 +9293,7 @@ Level.new(
         this.hab = {x:0,y:40.4,z:140};
         this.habSeat = Pole.new(this.hab.x,this.hab.y-33.3,this.hab.z,5,3.6,0,[220,180,115,255]);
         this.habBarrier = Pole.new(this.hab.x,this.hab.y-25,this.hab.z,2.3,4.5,0,[0,0,0,200]);
+        this.habAzimuth = 165;
         // this.habBarrier2 = Pole.new(this.hab.x,this.hab.y-25,this.hab.z,5.3,2.2,0,[0,0,0,200]);
         
         // solids.push(Block.new(22,0.1,7,4.5,0.1,2,20,[0,0,55,255]));
@@ -9309,6 +9310,7 @@ Level.new(
             this.hab.y = this.habSeat.y+33.3;
             this.habBarrier.y = this.hab.y-25;
             this.cancelJump = 2;
+            this.habAzimuth++;
         }
         
         if(player.z>this.hab.z-50&&(player.z>this.hab.z+10||!this.given)){
@@ -9470,7 +9472,7 @@ Level.new(
 
 
         let habDepth = -1;
-        if(drawHotAirBalloon(this.hab.x,this.hab.y,this.hab.z,50,165,[
+        if(drawHotAirBalloon(this.hab.x,this.hab.y,this.hab.z,50,this.habAzimuth,[
             [215,93,78,255],
             [235,109,87,255],
             [159,69,71,255],
@@ -9574,7 +9576,7 @@ Level.new(
   
   wMap.units = [
 
-  wMapUnit.new("demo level",-270,-270,[255,0,0]),
+  wMapUnit.new("demo level",-270,-270,[0,0,0]),
   wMapUnit.new("NPCity",-200,-270,[100,150,200]),
   wMapUnit.new("Zombies or Robots or Something",-200,-200,[100,0,0]),
   wMapUnit.new("soft level",-130,-270,[180,180,120]),
@@ -9592,19 +9594,19 @@ Level.new(
   wMapUnit.new("Piano",200,50,[255,255,255]),
   wMapUnit.new("Bagels",150,50,[250,210,100]),
 
-  wMapUnit.new("T3D",150,100,[255,0,255]),
+  wMapUnit.new("T3D",175,150,[255,0,255]),
   wMapUnit.new("Parcore",-270,-200,[0,0,100]),
   wMapUnit.new("Microwave",-270,0,[255,255,190]),
   wMapUnit.new("Infinite Maze",200,-50,[90,100,110]),
-  wMapUnit.new("Boids",200,200,[150,0,255]),
-  wMapUnit.new("Hot Air Balloon",200,250,[150,0,255]),
+  wMapUnit.new("Boids",200,200,[140,0,255]),
+  wMapUnit.new("Hot Air Balloon",150,100,[255,0,0]),
 
   ];
   
   
   screen = "map";
   // skip map:
-  screen = "game"; switchToLevel(levels.length-1); ianime = 101;
+//   screen = "game"; switchToLevel(levels.length-1); ianime = 101;
   drawLogoScreen();
 
 }
