@@ -10,7 +10,7 @@ var ganime = ~~ (6/7/25);
 
 /** ~~~~~~~~~~ Pre-Definitions ~~~~~~~~~~ **/
                     
-var sctpc,c,player,graphics,defaultZoom,roundTo,vLength,origin,main,levels,currentLevel,screen,complexAdjustPointForCamera,width,height,mouse;
+var sctpc,c,player,graphics,defaultZoom,roundTo,vLength,origin,main,levels,currentLevel,screen,complexAdjustPointForCamera,width,height,mouse,fps;
                     
 /** ~~~~~~~~~~~ Program Setup ~~~~~~~~~~~ **/
 
@@ -49,7 +49,7 @@ for(var i = 0; i<300; i++){
 var drawDevInfo = function(){
     push();
     scale(min(width,height)/600,min(width,height)/600);
-    textSize(14);
+    textSize(15);
     // textFont(createFont("Lucida Console Bold"));
     fill(0);
     var stri = "";
@@ -71,7 +71,7 @@ var drawDevInfo = function(){
     stri+="\nAET: ("+roundTo(c.azimuth,0)+", "+roundTo(c.elevation,0)+", "+roundTo(c.twist,0)+")";
     //stri+="\nXZ speed: "+roundTo(dist(0,0,player.xv,player.zv),3);
     //stri+="\ncanJump = "+roundTo(player.canJump,2);
-    stri+="\nFPS: "+roundTo(getFrameRate(),1);
+    stri+="\nFPS: "+roundTo(fps,(fps<20)+(fps<2));
     textAlign(LEFT,TOP);
     text(stri,15,15);
     pop();
@@ -2417,6 +2417,13 @@ var graphicOrders = [];
 // contains structs consisting of depth dist and: tri (v1,v2,v3,col,type), qua (v1,v2,v3,v4,col,type), lin (v1,v2,r,col,type)
 
 var getGraphicOrders = function(){
+
+    
+	var ar = graphics.map((g, i) => ({ depth: g.depth, id: i }));
+	ar.sort((a, b) => b.depth - a.depth);
+
+    /* lol khanacademy version:
+
     var ar = [];
     for(var i = 0; i<graphics.length; i++){
         ar.push({depth:graphics[i].depth,id:i});
@@ -2435,10 +2442,13 @@ var getGraphicOrders = function(){
             e--;
         }
     }
+    */
     
     for(var i = 0; i<ar.length; i++){
         graphicOrders[i]=ar[i].id;
     }
+
+
 };
 
 var displayGraphics = function(){
@@ -6056,8 +6066,6 @@ var resetPlayerAndCameraTo = function(x,y,z,azimuth,elevation,twist){
 main = function(){
     //if(inp[70]){inp[70]=false;if(ton){console.log(dist(player.x,player.z,tplace.x,tplace.z)/ttime);ton = false;}else{ttime = 0;tplace={x:player.x,z:player.z};ton = true;}}if(ton){ttime++;}
     
-    ganime = anyModulo(ganime+1,360);
-    
     switch(screen){
         case "map":
             wMap.whileRunning();
@@ -6107,7 +6115,7 @@ main = function(){
 function setup(){
     
 
-    createCanvas(windowWidth,windowHeight);
+    createCanvas(windowWidth,windowHeight); // WEBGL makes it slower!? maybe try making it all 1 draw call
     // textFont("Lucida Console Bold"); // not on p5js...?
     textFont('Verdana');
     strokeJoin(ROUND);  
@@ -9571,6 +9579,94 @@ Level.new(
         mannequins = [];
     }
 ),
+Level.new(
+    "Performance Test",
+    function(){
+        resetPlayerAndCameraTo(0,2,-10, 0,0,0);
+        this.l = 0;
+        this.remake = function(){
+            solids = [];
+            for(let x = 0; x<this.l; x++){
+                for(let y = 0; y<this.l; y++){
+                    for(let z = 0; z<this.l; z++){
+                        //var MediumTree = function(x,y,z,h,azimuth,elevation,generationTries,generationRad,seed,trunkCol,leafCol,leafColVariation){
+                        solids.push(MediumTree.new(x*7,y*7,z*7,2.2,0,90,20,3,1+x*this.l*this.l+y*this.l+z,[160,100,20],[20,140,35],25));
+                    }
+                }
+            }
+        }
+    },
+    function(){
+        graphics = [];
+        graphicOrders = [];
+        lightSources = [];
+        lightVectors = [];
+        colliders = [];
+
+        if(inp[89]){
+            inp[89] = false;
+            this.l++;
+            this.remake();
+        }
+        if(inp[85]){
+            inp[85] = false;
+            this.l--;
+            this.remake();
+        }
+        
+        
+        
+        // for(var i = 0; i<solids.length; i++){
+        //     solids[i].makeCollider();
+        // }
+        
+        colliders.push({idTag:-1,
+            x:0,y:0,z:0,
+            planeNorm:{x:0,y:1,z:0},
+            type:"slp",
+            giveJumpFunc:giveJump,
+        }); // floor collider
+        
+        playerAndCameraManagement();
+        
+        createLightVector({x:0.1,y:-1,z:0.2},1,0.1);
+        
+        drawLattice(0,5,7,0.6,[70,70,80,160]);
+        drawFloor(-0.000001,[75,75,85],true);
+        
+        for(var i = 0; i<solids.length; i++){
+            solids[i].draw();
+        }
+        
+        if(player.pov===2){
+            player.animate();
+            player.draw(0);
+        }
+        else if(player.pov>=3){
+            player.animate();
+            player.draw(0.4);
+        }
+        
+        
+        
+        push();
+        translate(width/2,height/2);
+        scale(1,-1);
+        background(100,200,255);
+        noStroke();
+        
+        displayGraphics();
+        
+        if(player.pov===1){
+            drawCrossHair();
+        }
+        
+        pop();
+    },
+    function(){
+        solids = [];
+    }
+),
 
 ];
   
@@ -9600,6 +9696,7 @@ Level.new(
   wMapUnit.new("Infinite Maze",200,-50,[90,100,110]),
   wMapUnit.new("Boids",200,200,[140,0,255]),
   wMapUnit.new("Hot Air Balloon",150,100,[255,0,0]),
+  wMapUnit.new("Performance Test",275,100,[150,150,150]),
 
   ];
   
@@ -9617,14 +9714,26 @@ function windowResized() {
     if(paused){
         drawLogoScreen();
     }
-}
+}   
+
 
 
 function draw(){
-    
-//   frameRate(60);
-//   console.log("f:"+getFrameRate());
-    //getDeltaTime();
+    ganime = anyModulo(ganime+1,360);
+    let nfps = getFrameRate();
+    if(ganime%15===0||nfps<fps*0.6){
+        fps = nfps;
+    }
+
+    // let now = performance.now();
+    // let delta = now - lastTime;
+    // lastTime = now;
+    // let fps = 1000 / delta;
+  
+
+
+  
+  
     
     if(!paused){
         /*if(dt>0.3){
