@@ -2417,10 +2417,9 @@ var graphicOrders = [];
 // contains structs consisting of depth dist and: tri (v1,v2,v3,col,type), qua (v1,v2,v3,v4,col,type), lin (v1,v2,r,col,type)
 
 var getGraphicOrders = function(){
-
-    
 	var ar = graphics.map((g, i) => ({ depth: g.depth, id: i }));
 	ar.sort((a, b) => b.depth - a.depth);
+
 
     /* lol khanacademy version:
 
@@ -2447,8 +2446,6 @@ var getGraphicOrders = function(){
     for(var i = 0; i<ar.length; i++){
         graphicOrders[i]=ar[i].id;
     }
-
-
 };
 
 var displayGraphics = function(){
@@ -2456,6 +2453,12 @@ var displayGraphics = function(){
     for(var i = 0; i<graphicOrders.length; i++){
         var g = graphics[graphicOrders[i]];
         if(g.needsSorting){
+            var primitiveOrders = g.primitives.map((_, j) => ({
+                id: j,
+                depth: depth(g.primitives[j])
+            }));
+            primitiveOrders.sort((a, b) => b.depth - a.depth);
+            /* khanacademy
             var primitiveOrders = [];
             for(var j = 0; j<g.primitives.length; j++){
                 primitiveOrders.push({
@@ -2477,6 +2480,7 @@ var displayGraphics = function(){
                     e--;
                 }
             }
+            */
             for(var j = 0; j<primitiveOrders.length; j++){
                 if(g.lightable){
                     calculateLightingForRenderable(g.primitives[primitiveOrders[j].id]);
