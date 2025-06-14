@@ -21,20 +21,12 @@ var sctpc,c,player,graphics,defaultZoom,roundTo,vLength,origin,main,levels,curre
 //     );
 // }; // to cleanse the main bulk of the program
 
+var usingWebgl = false; // somewhat faster but defeats the purpose of T3D
+var webglQueue = [];
 var generateAudioNodes = false; // only for khanacademy
 
-//var sanime = 0;
-var ianime = 0; // 0 or 100+
+var ianime = 0; // 0 or 101
 var paused = true;
-
-// delta time no longer supported :/
-/*var dt = 0;
-var preMillis = 0;
-var getDeltaTime = function(){
-    var m = millis(); // to perfectly sync dt and preMillis
-    dt = (m-preMillis)*0.001;
-    preMillis = m;
-};*/ 
 
 var inp = [];
 for(var i = 0; i<300; i++){
@@ -42,10 +34,10 @@ for(var i = 0; i<300; i++){
 }
 
 // frameRate(60);
-                      
 // var getFrameRate = function(){
 //     return(this.__frameRate);
 // };
+
 var drawDevInfo = function(){
     push();
     scale(min(width,height)/600,min(width,height)/600);
@@ -1063,8 +1055,8 @@ var chonky2dQuad = function(v1,v2,v3,v4){
 };
                     
 /// ~~~~~~~~~~~ 3D Rendering ~~~~~~~~~~~~ ///
-                    
-var renderClippedTriangle = function(tri){
+              
+var renderClippedTriangle = function(tri){ // replaced with renderClippedVerts
     if(tri.col.length<4){
         tri.col[3]=255;
     }
@@ -1072,7 +1064,7 @@ var renderClippedTriangle = function(tri){
     
     chonky2dTriangle(sctpc(tri.v1,c),sctpc(tri.v2,c),sctpc(tri.v3,c));
 };
-var renderClippedQuad = function(qua){
+var renderClippedQuad = function(qua){ // replaced with renderClippedVerts
     if(qua.col.length<4){
         qua.col[3]=255;
     }
@@ -1091,14 +1083,17 @@ var renderClippedVerts = function(verts,col){
     var center = {x:0,y:0};
     for(var i = 0; i<verts.length; i++){
         coords2d[i]=sctpc(verts[i],c);
-        center.x=(center.x*i+coords2d[i].x)/(i+1);
-        center.y=(center.y*i+coords2d[i].y)/(i+1);
+        center.x+=coords2d[i].x;
+        center.y+=coords2d[i].y;
     }
+    center.x/=verts.length;
+    center.y/=verts.length;
     beginShape();
     for(var i = 0; i<verts.length; i++){
+        var invDst = 1/(1+dist2d(center,coords2d[i]));
         vertex(
-            coords2d[i].x+(coords2d[i].x-center.x)/dist2d(center,coords2d[i]),
-            coords2d[i].y+(coords2d[i].y-center.y)/dist2d(center,coords2d[i])
+            coords2d[i].x+(coords2d[i].x-center.x)*invDst,
+            coords2d[i].y+(coords2d[i].y-center.y)*invDst
         );
     }
     endShape(CLOSE);
@@ -1217,6 +1212,239 @@ var clipAndRender = function(graphic){
     else{
         console.log("\""+graphic.type+"\" is an unknown type of graphic");
     }
+};
+var queueClippedVertsToWebgl = function(verts, col){
+	if(col.length < 4){
+		col[3] = 255;
+	}
+	
+	var coords2d = [];
+	var center = {x: 0, y: 0};
+	for(var i = 0; i < verts.length; i++){
+		coords2d[i] = sctpc(verts[i], c);
+		center.x += coords2d[i].x;
+		center.y += coords2d[i].y;
+	}
+	center.x /= verts.length;
+	center.y /= verts.length;
+	
+	for(var i = 1; i < verts.length - 1; i++){
+		webglQueue.push({
+			v1: chonkify(center, coords2d[0]),
+			v2: chonkify(center, coords2d[i]),
+			v3: chonkify(center, coords2d[i+1]),
+			col: col.slice()
+		});
+	}
+};
+var chonkify = function(center, point){
+	var invDst = 1 / (1 + dist2d(center, point));
+	return {
+		x: point.x + (point.x - center.x) * invDst,
+		y: point.y + (point.y - center.y) * invDst
+	};
+}
+var clipAndQueueToWebgl = function(graphic){
+	if(graphic.type === "tri" || graphic.type === "qua"){
+		var verts = [graphic.v1, graphic.v2, graphic.v3];
+		if(graphic.type === "qua"){
+			verts[3] = graphic.v4;
+		}
+		
+		for(var i = 0; i < c.sidePlaneNormals.length; i++){
+			var outPlane = [], clippingIsNeeded = false;
+			for(var j = 0; j < verts.length; j++){
+				outPlane[j] = !pointQuickCheckPlane(i, verts[j]);
+				if(outPlane[j]) clippingIsNeeded = true;
+			}
+			if(clippingIsNeeded){
+				for(var j = 0; j < verts.length; j++){
+					if(outPlane[j] !== outPlane[anyModulo(j-1, verts.length)]){
+						verts.splice(j, 0, lineQuickIntersectPlane(i, verts[j], verts[anyModulo(j-1, verts.length)]));
+						outPlane.splice(j, 0, false);
+						j++;
+					}
+				}
+				for(var j = verts.length - 1; j >= 0; j--){
+					if(outPlane[j]) verts.splice(j, 1);
+				}
+			}
+		}
+		
+		for(var i = 0; i < c.customPlanes.length; i++){
+			var outPlane = [], clippingIsNeeded = false;
+			for(var j = 0; j < verts.length; j++){
+				outPlane[j] = !pointSideOfPlane(c.customPlanes[i].point, c.customPlanes[i].norm, verts[j]);
+				if(outPlane[j]) clippingIsNeeded = true;
+			}
+			if(clippingIsNeeded){
+				for(var j = 0; j < verts.length; j++){
+					if(outPlane[j] !== outPlane[anyModulo(j-1, verts.length)]){
+						verts.splice(j, 0, lineIntersectPlane(c.customPlanes[i].point, c.customPlanes[i].norm, verts[j], verts[anyModulo(j-1, verts.length)]));
+						outPlane.splice(j, 0, false);
+						j++;
+					}
+				}
+				for(var j = verts.length - 1; j >= 0; j--){
+					if(outPlane[j]) verts.splice(j, 1);
+				}
+			}
+		}
+		
+		if(verts.length >= 3){
+			queueClippedVertsToWebgl(verts, graphic.col);
+		}
+	}
+	else if(graphic.type === "dot"){
+		var pos = sctpc(graphic, c);
+		if(graphic.renderType === "circle"){
+			var numSegs = 20;
+			var angleStep = TWO_PI / numSegs;
+			var verts = [];
+			for(var i = 0; i < numSegs; i++){
+				var a1 = i * angleStep;
+				var a2 = (i+1) * angleStep;
+				var x1 = graphic.rad * cos(a1);
+				var y1 = graphic.rad * sin(a1);
+				var x2 = graphic.rad * cos(a2);
+				var y2 = graphic.rad * sin(a2);
+				verts.push([
+					{x: pos.x, y: pos.y},
+					{x: pos.x + x1, y: pos.y + y1},
+					{x: pos.x + x2, y: pos.y + y2}
+				]);
+			}
+			for(var i = 0; i < verts.length; i++){
+				webglQueue.push({
+					v1: verts[i][0],
+					v2: verts[i][1],
+					v3: verts[i][2],
+					col: graphic.col.slice()
+				});
+			}
+		}
+		else if(graphic.renderType === "square"){
+			var r = graphic.rad;
+			var verts = [
+				{x: -r, y: -r},
+				{x:  r, y: -r},
+				{x:  r, y:  r},
+				{x: -r, y:  r}
+			];
+			var sinA = sin(graphic.renderRotation), cosA = cos(graphic.renderRotation);
+			for(var i = 0; i < verts.length; i++){
+				var x = verts[i].x, y = verts[i].y;
+				verts[i] = {
+					x: pos.x + cosA * x - sinA * y,
+					y: pos.y + sinA * x + cosA * y
+				};
+			}
+			webglQueue.push({
+				v1: verts[0],
+				v2: verts[1],
+				v3: verts[2],
+				col: graphic.col.slice()
+			});
+			webglQueue.push({
+				v1: verts[0],
+				v2: verts[2],
+				v3: verts[3],
+				col: graphic.col.slice()
+			});
+		}
+		else if(graphic.renderType === "triangle"){
+			var r = graphic.rad;
+			var verts = [
+				{x: -0.5 * r, y: sqrt(3)/2 * r},
+				{x: r,        y: 0},
+				{x: -0.5 * r, y: -sqrt(3)/2 * r}
+			];
+			var sinA = sin(graphic.renderRotation), cosA = cos(graphic.renderRotation);
+			for(var i = 0; i < verts.length; i++){
+				var x = verts[i].x, y = verts[i].y;
+				verts[i] = {
+					x: pos.x + cosA * x - sinA * y,
+					y: pos.y + sinA * x + cosA * y
+				};
+			}
+			webglQueue.push({
+				v1: verts[0],
+				v2: verts[1],
+				v3: verts[2],
+				col: graphic.col.slice()
+			});
+		}
+	}
+	else if(graphic.type === "lin"){
+		var drawIt = true;
+		var a = graphic.v1;
+		var b = graphic.v2;
+		
+		for(var i = 0; i < c.sidePlaneNormals.length; i++){
+			var aOut = !pointQuickCheckPlane(i, a);
+			var bOut = !pointQuickCheckPlane(i, b);
+			
+			if(aOut && bOut){
+				drawIt = false;
+				break;
+			}
+			else if(aOut){
+				a = lineQuickIntersectPlane(i, a, b);
+			}
+			else if(bOut){
+				b = lineQuickIntersectPlane(i, a, b);
+			}
+		}
+		
+		if(drawIt){
+			var p1 = sctpc(a, c);
+			var p2 = sctpc(b, c);
+			var dx = p2.x - p1.x;
+			var dy = p2.y - p1.y;
+			var len = sqrt(dx*dx + dy*dy);
+			if(len < 0.001) return;
+			
+			var offX = -dy / len * graphic.rad;
+			var offY = dx / len * graphic.rad;
+			
+			var verts = [
+				{x: p1.x + offX, y: p1.y + offY},
+				{x: p1.x - offX, y: p1.y - offY},
+				{x: p2.x - offX, y: p2.y - offY},
+				{x: p2.x + offX, y: p2.y + offY}
+			];
+			
+			webglQueue.push({
+				v1: verts[0],
+				v2: verts[1],
+				v3: verts[2],
+				col: graphic.col.slice()
+			});
+			webglQueue.push({
+				v1: verts[0],
+				v2: verts[2],
+				v3: verts[3],
+				col: graphic.col.slice()
+			});
+		}
+	}
+	else{
+		console.log("\"" + graphic.type + "\" is an unknown type of graphic");
+	}
+};
+
+var renderWebglQueue = function(){
+	noStroke();
+	beginShape(TRIANGLES);
+	for(var i = 0; i < webglQueue.length; i++){
+		var tri = webglQueue[i];
+		fill(tri.col[0], tri.col[1], tri.col[2], tri.col[3]);
+		vertex(tri.v1.x, tri.v1.y);
+		vertex(tri.v2.x, tri.v2.y);
+		vertex(tri.v3.x, tri.v3.y);
+	}
+	endShape();
+	webglQueue = [];
 };
                     
 /// ~~~~~~~~~~~ 3D Model Data ~~~~~~~~~~~ ///
@@ -2486,7 +2714,12 @@ var displayGraphics = function(){
                     calculateLightingForRenderable(g.primitives[primitiveOrders[j].id]);
                     applyLightingToRenderable(g.primitives[primitiveOrders[j].id]);
                 }
-                clipAndRender(g.primitives[primitiveOrders[j].id]);
+                if(usingWebgl){
+                    clipAndQueueToWebgl(g.primitives[primitiveOrders[j].id]);
+                }
+                else{
+                    clipAndRender(g.primitives[primitiveOrders[j].id]);
+                }
             }
         }
         else{
@@ -2495,9 +2728,17 @@ var displayGraphics = function(){
                     calculateLightingForRenderable(g.primitives[j]);
                     applyLightingToRenderable(g.primitives[j]);
                 }
-                clipAndRender(g.primitives[j]);
+                if(usingWebgl){
+                    clipAndQueueToWebgl(g.primitives[j]);
+                }
+                else{
+                    clipAndRender(g.primitives[j]);
+                }
             }
         }
+    }
+    if(usingWebgl){
+        renderWebglQueue();
     }
 };
                     
@@ -3572,6 +3813,10 @@ var drawT3dLogo = function(x,y,s,time,blackBackground){
     }
 };
 var drawLogoScreen = function(){
+    push();
+    if(usingWebgl){
+        translate(-width/2,-height/2);
+    }
     background(0);
     drawT3dLogo(width/2,height/2,min(width,height)/5,0);
     fill(255);
@@ -3582,6 +3827,7 @@ var drawLogoScreen = function(){
     //text("Why did I make this logo thing",width/2,width/5);
     text("Click to start",width/2,0.83*height);
     text("Controls: WASD, space, mouse",width/2,0.77*height);
+    pop();
     pop();
 }
 
@@ -5953,8 +6199,13 @@ wMapUnit.prototype.drawIcon = function(){
     push();
     if(this.col===undefined){
         fill(0,30);
-        stroke(0,50);
-        strokeWeight(4);
+        if(usingWebgl){
+            noStroke();
+        }
+        else{
+            stroke(0,50);
+            strokeWeight(4);
+        }
         rect(this.x-25,this.y-25,50,50,18);
     }
     else{
@@ -6119,9 +6370,17 @@ main = function(){
 function setup(){
     
 
-    createCanvas(windowWidth,windowHeight); // WEBGL makes it slower!? maybe try making it all 1 draw call
-    // textFont("Lucida Console Bold"); // not on p5js...?
-    textFont('Verdana');
+    if(usingWebgl){
+        createCanvas(windowWidth,windowHeight,WEBGL); // note: without beginShape batching, WEBGL is MUCH slower!
+        // hint(DISABLE_DEPTH_TEST);
+        textFont(loadFont('Inconsolata.otf'));
+    }
+    else{
+        createCanvas(windowWidth,windowHeight);
+        textFont('Verdana');
+    }
+
+    // textFont("Lucida Console Bold"); // khanacademy
     strokeJoin(ROUND);  
     angleMode(DEGREES);
 
@@ -6155,7 +6414,12 @@ function setup(){
         paused = true; // Cursor unlocked
         fill(180,100);
         noStroke();
+        push();
+        if(usingWebgl){
+            translate(-width/2,-height/2);
+        }
         rect(0,0,width,height);
+        pop();
     }
     });
 
@@ -9739,20 +10003,12 @@ function draw(){
   
   
     
+
     if(!paused){
-        /*if(dt>0.3){
-            paused = true;
-            fill(180,100);
-            noStroke();
-            rect(0,0,width,height);
-            fill(0);
-            textSize(60);
-            textAlign(CENTER,CENTER);
-            text("Program Paused",width/2,width/3);
-            textSize(30);
-            text("Because delta time was\nunnaturally high: "+roundTo(dt,3),width/2,2*width/3);
-        } // large lag or frame drop from tab switch
-        else{*/
+        push();
+        if(usingWebgl){
+            translate(-width/2,-height/2);
+        }
         if(ianime<=100){
             background(0);
             if(ianime>31){
@@ -9806,5 +10062,6 @@ function draw(){
                 }
             }
         }
+        pop();
     }
 };
