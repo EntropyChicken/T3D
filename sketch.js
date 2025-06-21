@@ -10544,6 +10544,7 @@ Level.new(
     },
     function(){
         solids = [];
+        player.rad = this.playerNaturalRad;
     }
 ),
 
