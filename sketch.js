@@ -2636,6 +2636,99 @@ var monitorHeadModel = {
         {v1:8,v2:1,v3:5,v4:9},
     ],
 };
+var arcadeHeadMiddleModel = {
+    coordData:[
+        {x:-0.25,y:-1,z:-1},
+        {x:-0.25,y:-1,z:1},
+        {x:1,y:-1,z:1},
+        {x:1,y:-1,z:-1},
+        {x:-1,y:-0.25,z:1},
+        {x:-1,y:0.25,z:1},
+        {x:-1,y:0.25,z:-1},
+        {x:-1,y:-0.25,z:-1},
+        {x:-0.25,y:1,z:-1},
+        {x:-0.25,y:1,z:1},
+        {x:0,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:1},
+        {x:0,y:-0.5,z:1},
+        {x:0.25,y:1,z:-1},
+        {x:0.25,y:1,z:1},
+        {x:0,y:0.5,z:1},
+        {x:0,y:0.5,z:-1},
+    ],
+    triData:[],
+    quaData:[
+        {v1:6,v2:17,v3:10,v4:7},
+        {v1:17,v2:16,v3:13,v4:10},
+        {v1:16,v2:5,v3:4,v4:13},
+        {v1:4,v2:5,v3:6,v4:7},
+    ],
+};
+var arcadeHeadTopModel = {
+    coordData:[
+        {x:-0.25,y:-1,z:-1},
+        {x:-0.25,y:-1,z:1},
+        {x:1,y:-1,z:1},
+        {x:1,y:-1,z:-1},
+        {x:-1,y:-0.25,z:1},
+        {x:-1,y:0.25,z:1},
+        {x:-1,y:0.25,z:-1},
+        {x:-1,y:-0.25,z:-1},
+        {x:-0.25,y:1,z:-1},
+        {x:-0.25,y:1,z:1},
+        {x:0,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:1},
+        {x:0,y:-0.5,z:1},
+        {x:0.25,y:1,z:-1},
+        {x:0.25,y:1,z:1},
+        {x:0,y:0.5,z:1},
+        {x:0,y:0.5,z:-1},
+    ],
+    triData:[],
+    quaData:[
+        {v1:17,v2:14,v3:15,v4:16},
+        {v1:14,v2:8,v3:9,v4:15},
+        {v1:8,v2:6,v3:5,v4:9},
+        {v1:6,v2:8,v3:14,v4:17},
+        {v1:15,v2:9,v3:5,v4:16},
+    ],
+};
+var arcadeHeadBottomModel = {
+    coordData:[
+        {x:-0.25,y:-1,z:-1},
+        {x:-0.25,y:-1,z:1},
+        {x:1,y:-1,z:1},
+        {x:1,y:-1,z:-1},
+        {x:-1,y:-0.25,z:1},
+        {x:-1,y:0.25,z:1},
+        {x:-1,y:0.25,z:-1},
+        {x:-1,y:-0.25,z:-1},
+        {x:-0.25,y:1,z:-1},
+        {x:-0.25,y:1,z:1},
+        {x:0,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:-1},
+        {x:0.75,y:-0.5,z:1},
+        {x:0,y:-0.5,z:1},
+        {x:0.25,y:1,z:-1},
+        {x:0.25,y:1,z:1},
+        {x:0,y:0.5,z:1},
+        {x:0,y:0.5,z:-1},
+    ],
+    triData:[
+        {v1:0,v2:11,v3:3},
+        {v1:2,v2:12,v3:1},
+    ],
+    quaData:[
+        {v1:11,v2:12,v3:2,v4:3},
+        {v1:11,v2:10,v3:13,v4:12},
+        {v1:0,v2:7,v3:10,v4:11},
+        {v1:4,v2:1,v3:12,v4:13},
+        {v1:7,v2:0,v3:1,v4:4},
+        {v1:0,v2:3,v3:2,v4:1},
+    ],
+};
 
                     
 /// ~~~~~~ Graphic Group Management ~~~~~ ///
@@ -4579,6 +4672,40 @@ MediumTree.prototype.makeCollider = function(){
     }
 };
 
+var Block = function(x,y,z,l,h,w,azimuth,col){
+    this.x=x; this.y=y; this.z=z;
+    this.prevx=x; this.prevy=y; this.prevz=z;
+    this.l=l; this.h=h; this.w=w;
+    this.azimuth = azimuth;
+    this.col = col;
+};
+Block.prototype.draw = function(){
+    drawModel(cubeModel,this.x,this.y,this.z,this.l,this.h,this.w,this.azimuth,0,0,this.col,true);
+};
+Block.prototype.makeCollider = function(){
+    colliders.push({idTag:-1,
+        type:"box",
+        x:this.x, y:this.y, z:this.z,
+        prevx:this.prevx, prevy:this.prevy, prevz:this.prevz,
+        l:this.l, h:this.h, w:this.w,
+        azimuth:this.azimuth,
+        giveJumpFunc:giveJump
+    });
+};
+
+var WindowBlock = function(x,y,z,l,h,w,azimuth,col,windowLowH,windowHighH,windowCol){
+    Block.call(this,x,y,z,l,h,w,azimuth,col);
+    this.windowCol = windowCol;
+    this.windowLowH = windowLowH; // between 0 and 1
+    this.windowHighH = windowHighH; // between 0 and 1, higher than windowLowH
+}
+WindowBlock.prototype = Object.create(Block.prototype);
+WindowBlock.prototype.draw = function(){
+    drawModel(cubeModel,this.x,this.y+this.h*(this.windowLowH-1),this.z,this.l,this.h*this.windowLowH,this.w,this.azimuth,0,0,this.col,true);
+    drawModel(cubeModel,this.x,this.y,this.z,this.l,this.h*(this.windowHighH-this.windowLowH),this.w,this.azimuth,0,0,this.windowCol,true);
+    drawModel(cubeModel,this.x,this.y+this.h*this.windowHighH,this.z,this.l,this.h*(1-this.windowHighH),this.w,this.azimuth,0,0,this.col,true);
+}
+
 
 
 var Item = function(x,y,z){
@@ -5331,6 +5458,340 @@ var makeMannequinClone = function(og){
     cl.idTag = floor(random(0,1e18));
     return cl;
 };
+
+var Limb = function(root,end,segData,targetTime,yLift){
+    this.root = pCopy(root);
+    this.end = pCopy(end);
+
+    this.endTarget = pCopy(end);
+    this.endTransition = pCopy(end);
+    this.targetTimer = 0;
+    this.targetTime = targetTime; // constant
+
+    this.yLift = yLift;
+    this.segs = oCopy(segData); // [{l,h,w,col},{l,h,w,col}, ...]
+    this.joints = [];
+    for(let i = 0; i<=segData.length; i++){
+        this.joints.push(vAdd(root,vScale(vSub(end,root),i/segData.length)));
+    }
+};
+Limb.prototype.inverseKinematicsReach = function(pt,endFirst,allowShort){
+    if(allowShort===undefined){
+        allowShort = false;
+    }
+    for(let i = (this.joints.length-1)*endFirst; i<this.joints.length&&i>=0; i+=1-2*endFirst){
+        let j = i-(1-2*endFirst);
+        if(j<0||j>=this.joints.length){
+            this.joints[i] = pCopy(pt);
+        }
+        else{
+            let l = this.segs[min(i,j)].l;
+            if((!allowShort)||distPointToPoint(this.joints[i],this.joints[j])>l){
+                this.joints[i] = vAdd(this.joints[j],vScale(vNormalize(vSub(this.joints[i],this.joints[j])),l));
+            }
+        }
+    }
+}
+Limb.prototype.fabrik = function(){
+    let iters = 10;
+    for(let i = 0; i<iters; i++){
+        this.inverseKinematicsReach(this.end,1);
+        this.inverseKinematicsReach(this.root,0);
+    }
+}
+Limb.prototype.drawDebug = function(){
+    if(drawDot({x:this.end.x,y:this.end.y,z:this.end.z,rad:0.16,renderType:"circle",col:[255,0,0]})){
+        graphics[graphics.length-1].depth = 1e-5;
+    }
+    if(drawDot({x:this.root.x,y:this.root.y,z:this.root.z,rad:0.16,renderType:"circle",col:[0,0,255]})){
+        graphics[graphics.length-1].depth = 1e-5;
+    }
+    for(let i = 0; i<this.joints.length; i++){
+        if(drawDot({x:this.joints[i].x,y:this.joints[i].y,z:this.joints[i].z,rad:0.1,renderType:"circle",col:[255,0,255]})){
+            graphics[graphics.length-1].depth = 1e-6;
+        }
+    }
+    // oPrint(this);
+    // console.log(this.end)
+}
+Limb.prototype.draw = function(){
+    for(let i = 0; i<this.segs.length; i++){
+        let mid = vScale(vAdd(this.joints[i],this.joints[i+1]),0.5);
+        let azimuth = azimuthBetween(this.joints[i],this.joints[i+1]); // or maybe just part of the leg, overwritten by the creature so it doesn't "bend backwards"...?
+        let elevation = elevationBetween(this.joints[i],this.joints[i+1]);
+        drawModel(cubeModel,mid.x,mid.y,mid.z,this.segs[i].w/2,this.segs[i].h/2,this.segs[i].l/2,azimuth,elevation,0,this.segs[i].col,true);
+    }
+}
+Limb.prototype.setTarget = function(pt){
+    this.endTarget = pCopy(pt);
+    this.targetTimer = this.targetTime;
+    // console.log(this.endTarget)
+}
+Limb.prototype.operate = function(){
+    this.fabrik();
+
+    this.targetTimer = round(this.targetTimer); // discrete number of steps left to take
+    if(this.targetTimer>0){
+        this.endTransition = vAdd(this.endTransition,vScale(vSub(this.endTarget,this.endTransition),1/this.targetTimer));
+        this.end = this.endTransition;
+        this.end.y += this.yLift*sin(this.targetTimer/this.targetTime*180);
+        this.targetTimer--;
+    }
+}
+
+var WarWalker = function(x,y,z,azimuth,limbSegSettings){
+    Oier.call(this,x,y,z,2.2,0.4,5,azimuth,0,0,0.85,0.85,1,1000);
+    this.comfyRad = 3.65;
+    this.stepRandomness = 0.4;
+
+    this.prevx = x;
+    this.prevy = y;
+    this.prevz = z;
+
+    this.legCentralism = 0;
+    this.legCentralismTimer = 0;
+
+    this.limbs = [];
+    this.altitude = 3.1;
+    let segSettings;
+    if(limbSegSettings===undefined||limbSegSettings.length===0){
+        segSettings = [
+            {l:1.25,h:0.7,w:0.7,col:[130,130,160]},
+            {l:1.15,h:0.5,w:0.5,col:[200,200,230]},
+            {l:1.15,h:0.5,w:0.5,col:[200,200,230]},
+            {l:0.7,h:0.9,w:0.9,col:[130,130,160]},
+        ];
+    }
+    else{
+        segSettings = limbSegSettings;
+    }
+    for(let i = 0; i<3; i++){
+    
+        let root = {x:cos(i*120)*this.rad,y:0,z:sin(i*120)*this.rad};
+        angRotatePointEAT(root,origin,this.azimuth,this.elevation,0);
+        root = vAdd(this,root);
+
+        let xzDst = dist(root.x,root.z,this.x,this.z)+1e-4; // don't divide 0
+        let comfy = vAdd(this,vScale(vSub(root,this),this.comfyRad/xzDst));
+        comfy.y = this.y - this.altitude;
+            
+        this.limbs.push(Limb.new(
+            root,
+            comfy,
+            segSettings,
+            9,
+            0.3
+        ));
+    }
+}
+WarWalker.prototype = Object.create(Oier.prototype);
+WarWalker.prototype.operate = function(){
+    if(this.azimuth<0){
+        this.azimuth+=3600;
+    }
+    this.azimuth%=360;
+    
+    for(let i = 0; i<3; i++){
+        let root = {x:cos(i*120)*this.rad,y:0,z:sin(i*120)*this.rad};
+        angRotatePointEAT(root,origin,this.azimuth,this.elevation,0);
+        root = vAdd(this,root);
+
+        let xzDst = dist(root.x,root.z,this.x,this.z)+1e-4; // don't divide 0
+        let comfy = vAdd(this,vScale(vSub(root,this),this.comfyRad/xzDst));
+        comfy.y = this.y - this.altitude;
+
+        this.limbs[i].root = root;
+            // console.log(distPointToPoint(this.limbs[i].end,comfy))
+            // oPrint(this.limbs[i].end)
+            // oPrint(comfy)
+
+        let homeMetric = {x:(comfy.x+this.x*this.legCentralism)/(1+this.legCentralism),y:comfy.y,z:(comfy.z+this.z*this.legCentralism)/(1+this.legCentralism)}
+        let maxRad = 1.9+1.8*this.legCentralism;
+        if(distPointToPoint(this.limbs[i].end,homeMetric)>maxRad){
+            let dirVec = vSub(homeMetric,this.limbs[i].end);
+            let sf = random(0.92,0.98)*maxRad/vLength(dirVec);
+            this.limbs[i].setTarget(vAdd(homeMetric,vScale(dirVec,sf)))
+        }
+    }
+    
+    for(let limb of this.limbs){
+        limb.operate();
+    }
+
+    this.legCentralismTimer--;
+    if(this.legCentralismTimer<0){
+        this.legCentralismTimer = 0;
+        this.legCentralism=0;
+    }
+    if(this.y>this.altitude){
+        this.y-=min(1,(this.y-this.altitude)*0.3);
+    }
+    else if(this.y<this.altitude){
+        this.y+=min(0.8,(this.altitude-this.y)*0.3);
+    }
+}
+WarWalker.prototype.operateDebug = function(){
+    var t = this;
+    if(inp[73]){
+        t.z+=0.17;
+    }
+    if(inp[74]){
+        t.x-=0.17;
+    }
+    if(inp[75]){
+        t.z-=0.17;
+    }
+    if(inp[76]){
+        t.x+=0.17;
+    }
+    if(inp[79]){
+        t.azimuth+=3.5;
+    }
+    if(inp[85]){
+        t.azimuth-=3.5;
+    }
+    if(inp[188]){
+        t.y+=2;
+    }
+}
+WarWalker.prototype.nature = function(){
+    if(dist(this.prevx,this.prevz,this.x,this.z)>0.01){
+        this.legCentralism = 1;
+        this.legCentralismTimer = 10;
+    }
+    this.prevx = this.x;
+    this.prevy = this.y;
+    this.prevz = this.z;
+}
+WarWalker.prototype.draw = function(){
+    for(let limb of this.limbs){
+        limb.draw();
+    }
+
+    let maxDepth = -1;
+    if(drawModel(
+        cubeModel,
+        this.x+this.rad*0.475*cos(this.azimuth+90),
+        this.y+1.1+this.rad*0.6,
+        this.z+this.rad*0.475*sin(this.azimuth+90),
+        1.5,0.25,0.25,
+        this.azimuth+90,this.elevation,0,[80,80,110],true
+    )){maxDepth = max(maxDepth,graphics[graphics.length-1].depth)}
+    if(drawModel(
+        cubeModel,
+        this.x+this.rad*0.475*cos(this.azimuth+90)+this.rad*0.5*cos(this.azimuth+180),
+        this.y+1.1+this.rad*0.6,
+        this.z+this.rad*0.475*sin(this.azimuth+90)+this.rad*0.5*sin(this.azimuth+180),
+        1.5,0.25,0.25,
+        this.azimuth+90,this.elevation,0,[80,80,110],true
+    )){maxDepth = max(maxDepth,graphics[graphics.length-1].depth)}
+    if(drawModel(
+        cubeModel,
+        this.x+this.rad*0.475*cos(this.azimuth+90)+this.rad*0.5*cos(this.azimuth),
+        this.y+1.1+this.rad*0.6,
+        this.z+this.rad*0.475*sin(this.azimuth+90)+this.rad*0.5*sin(this.azimuth),
+        1.5,0.25,0.25,
+        this.azimuth+90,this.elevation,0,[80,80,110],true
+    )){maxDepth = max(maxDepth,graphics[graphics.length-1].depth)}
+    
+    if(drawModel(
+        hexaCylinderModel,
+        this.x,this.y-0.15,this.z,
+        this.rad*0.99,0.65,this.rad*0.99,
+        this.azimuth,this.elevation,0,[130,130,160],true
+    )){
+        if(maxDepth!==-1&&c.y>this.y+3+this.rad*0.6){
+            graphics[graphics.length-1].depth = max(graphics[graphics.length-1].depth,maxDepth+3e-6);
+        }
+    }
+    if(drawModel(
+        hexaCylinderModel,
+        this.x,this.y+0.75,this.z,
+        this.rad*0.45,0.25,this.rad*0.45,
+        this.azimuth,this.elevation,0,[130,130,160],true
+    )){
+        if(maxDepth!==-1&&c.y>this.y+3+this.rad*0.6){
+            graphics[graphics.length-1].depth = max(graphics[graphics.length-1].depth,maxDepth+2e-6);
+        }
+    }
+
+    drawModel(
+        arcadeHeadTopModel,
+        this.x-this.rad*0.2*cos(this.azimuth+90),
+        this.y+1+this.rad*0.6,
+        this.z-this.rad*0.2*sin(this.azimuth+90),
+        this.rad*0.8,this.rad*0.6,this.rad*0.7,
+        this.azimuth+90,this.elevation,0,[130,130,160],true
+    );
+    if(drawModel(
+        arcadeHeadMiddleModel,
+        this.x-this.rad*0.2*cos(this.azimuth+90),
+        this.y+1+this.rad*0.6,
+        this.z-this.rad*0.2*sin(this.azimuth+90),
+        this.rad*0.8,this.rad*0.6,this.rad*0.7,
+        this.azimuth+90,this.elevation,0,[255,175,75],true
+    )){
+        // this.azimuth = azimuthBetween(this,c);
+        let angDif = (azimuthBetween(this,c)+360)%360 - this.azimuth%360;
+        if(angDif>180){
+            angDif-=360;
+        }
+        if(angDif<-180){
+            angDif+=360;
+        }
+        if(abs(angDif)<90){
+            graphics[graphics.length-1].depth = max(graphics[graphics.length-1].depth,maxDepth+1e-6);
+        }
+    }
+    if(drawModel(
+        arcadeHeadBottomModel,
+        this.x-this.rad*0.2*cos(this.azimuth+90),
+        this.y+1+this.rad*0.6,
+        this.z-this.rad*0.2*sin(this.azimuth+90),
+        this.rad*0.8,this.rad*0.6,this.rad*0.7,
+        this.azimuth+90,this.elevation,0,[130,130,160],true
+    )){
+        if(maxDepth!==-1&&c.y>this.y+3+this.rad*0.6){
+            graphics[graphics.length-1].depth = max(graphics[graphics.length-1].depth,maxDepth+1e-6);
+        }
+    }
+}
+WarWalker.prototype.makeCollider = function(){
+    var yOff = 2.1;
+    colliders.push({idTag:-1,
+        type:"box",
+        x:this.x, y:this.y+yOff, z:this.z,
+        prevx:this.prevx, prevy:this.prevy+yOff, prevz:this.prevz,
+        l:this.rad*0.8, h:this.h, w:this.rad*1.1,
+        azimuth:this.azimuth,
+        giveJumpFunc:function(oier){
+            giveJump(oier);
+            oier.standingOnWarWalker = true;
+        }
+    });
+}
+WarWalker.prototype.friend = function(){
+    if(dist(player.x,player.z,this.x,this.z)<2.4||player.standingOnWarWalker){
+        if(player.y<this.y){
+            player.y = this.y+2.11+this.h;
+            player.x = this.x;
+            player.z = this.z;
+        }
+
+        if(player.standingOnWarWalker){
+            if(abs(this.azimuth-player.azimuth)<=3){
+                this.azimuth = player.azimuth;
+            }
+            else{
+                this.azimuth = angTo(this.azimuth,player.azimuth,3);
+            }
+            this.x += (player.x+player.xv-this.x)*0.1;
+            this.z += (player.z+player.zv-this.z)*0.1;
+        }
+        
+        player.standingOnWarWalker = false;
+    }
+}
 
 
 
@@ -9848,9 +10309,9 @@ Level.new(
     }
 ),
 Level.new(
-    "Performance Test",
+    "Armistice Town",
     function(){
-        resetPlayerAndCameraTo(0,2,-10, 0,0,0);
+        resetPlayerAndCameraTo(-5,2,-8, 0,0,0);
         this.l = 0;
         this.remake = function(){
             solids = [];
@@ -9863,6 +10324,32 @@ Level.new(
                 }
             }
         }
+        // this.remake();
+        
+        // let segSetting = {l:1,h:0.3,w:0.3,col:[200,200,230]};
+        // this.limb = Limb.new({x:-6,y:2.5,z:0},{x:-5,y:0,z:0},[segSetting,segSetting,segSetting,{l:1,h:0.45,w:0.45,col:[130,130,160]}],10,0.3);
+        this.warWalker = WarWalker.new(-5,3,0,230);
+
+        this.mat = [];
+
+        for(let i = 0; i<20; i++){
+            this.mat.push([]);
+            for(let j = 0; j<20; j++){
+                this.mat[i].push(0);
+            }
+        }
+        for(let i = 0; i<this.mat.length; i++){
+            for(let j = 0; j<this.mat[i].length; j++){
+                if(random(0,8)<1){
+                    this.mat[i][j] = 1;
+                    if(i&&!this.mat[i-1][j]){this.mat[i-1][j] = 2;}
+                    if(j&&!this.mat[i][j-1]){this.mat[i][j-1] = 2;}
+                    if(i<this.mat.length-1&&!this.mat[i+1][j]){this.mat[i+1][j] = 2;}
+                    if(j<this.mat[i].length-1&&!this.mat[i][j+1]){this.mat[i][j+1] = 2;}
+                    solids.push(WindowBlock.new(i*7+3.5,4,j*7+3.5,3.5,4,3.5,0,[90,90,100],0.15,0.85,[100,180,255,80]));
+                }
+            }
+        }
     },
     function(){
         graphics = [];
@@ -9871,22 +10358,23 @@ Level.new(
         lightVectors = [];
         colliders = [];
 
-        if(inp[89]){
-            inp[89] = false;
-            this.l++;
-            this.remake();
-        }
-        if(inp[85]){
-            inp[85] = false;
-            this.l--;
-            this.remake();
-        }
-        
-        
-        
-        // for(var i = 0; i<solids.length; i++){
-        //     solids[i].makeCollider();
+        // if(inp[84]){
+        //     inp[84] = false;
+        //     this.l++;
+        //     this.remake();
         // }
+        // if(inp[89]){
+        //     inp[89] = false;
+        //     this.l--;
+        //     this.remake();
+        // }
+        
+        
+        
+        for(var i = 0; i<solids.length; i++){
+            solids[i].makeCollider();
+        }
+        this.warWalker.makeCollider();
         
         colliders.push({idTag:-1,
             x:0,y:0,z:0,
@@ -9905,11 +10393,16 @@ Level.new(
         for(var i = 0; i<solids.length; i++){
             solids[i].draw();
         }
+
+        this.warWalker.nature();
+        this.warWalker.friend();
+        this.warWalker.operate();
+        this.warWalker.draw();
         
         if(player.pov===2){
             player.animate();
             player.draw(0);
-        }
+        }   
         else if(player.pov>=3){
             player.animate();
             player.draw(0.4);
@@ -9964,14 +10457,14 @@ Level.new(
   wMapUnit.new("Infinite Maze",200,-50,[90,100,110]),
   wMapUnit.new("Boids",200,200,[140,0,255]),
   wMapUnit.new("Hot Air Balloon",150,100,[255,0,0]),
-  wMapUnit.new("Performance Test",275,100,[150,150,150]),
+  wMapUnit.new("Armistice Town",225,100,[255,210,0]),
 
   ];
   
   
   screen = "map";
   // skip map:
-//   screen = "game"; switchToLevel(levels.length-1); ianime = 101;
+  screen = "game"; switchToLevel(levels.length-1); ianime = 101;
   drawLogoScreen();
 
 }
