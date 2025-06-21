@@ -4808,11 +4808,14 @@ Oier.prototype.azimuthAccelerate = function(azimuth,mag){
     this.zv+=sin(azimuth)*mag;
 };
 // incomplete, no slp interation for slopes that are like ceilings, and only cyl really supports motion, except maybe sph ig
-Oier.prototype.interactWithColliders = function(useMovementLine){
+Oier.prototype.interactWithColliders = function(useMovementLine,needsSorting){
     // must come after all colliders have been created for that frame... which may be annoying in some cases.
     
     if(useMovementLine===undefined){
         useMovementLine=false;
+    }
+    if(needsSorting===undefined){
+        needsSorting = false;
     }
     
     var crownLevel = this.y+this.h;
@@ -4820,10 +4823,10 @@ Oier.prototype.interactWithColliders = function(useMovementLine){
     var hit = false;
     
     // you might need to sort colliders by distance to the oier if you want side-by-side colliders to be smoothly walkable.
-    // actually nevermind this does nothing since it just loops through all colliders anyways
-    // if(this===player){
-    //     colliders.sort((a, b) => (sq(a.x-this.x)+sq(a.y-this.y)+sq(a.z-this.z)) - (sq(b.x-this.x)+sq(b.y-this.y)+sq(b.z-this.z)));
-    // }
+    // i think it does matter even though you don't break;
+    if(needsSorting){
+        colliders.sort((a, b) => (sq(a.x-this.x)+sq(a.y-this.y)+sq(a.z-this.z)) - (sq(b.x-this.x)+sq(b.y-this.y)+sq(b.z-this.z)));
+    }
     
     for(var i = 0; i<colliders.length; i++){
         var collider = colliders[i];
@@ -5583,13 +5586,22 @@ var WarWalker = function(x,y,z,azimuth,limbSegSettings){
             0.3
         ));
     }
+
+    this.path = [];
+    this.pathBoringTimer = 0;
+
+    this.azimuthTarget = azimuth;
 }
 WarWalker.prototype = Object.create(Oier.prototype);
 WarWalker.prototype.operate = function(){
-    if(this.azimuth<0){
-        this.azimuth+=3600;
+    this.azimuthTarget = anyModulo(this.azimuthTarget,360);
+    this.azimuth = anyModulo(this.azimuth,360);
+    if(abs(this.azimuth-this.azimuthTarget)<=3){
+        this.azimuth = this.azimuthTarget;
     }
-    this.azimuth%=360;
+    else{
+        this.azimuth = angTo(this.azimuth,this.azimuthTarget,3);
+    }
     
     for(let i = 0; i<3; i++){
         let root = {x:cos(i*120)*this.rad,y:0,z:sin(i*120)*this.rad};
@@ -5757,7 +5769,8 @@ WarWalker.prototype.draw = function(){
     }
 }
 WarWalker.prototype.makeCollider = function(){
-    var yOff = 2.1;
+    let thisww = this;
+    let yOff = 2.1;
     colliders.push({idTag:-1,
         type:"box",
         x:this.x, y:this.y+yOff, z:this.z,
@@ -5766,30 +5779,63 @@ WarWalker.prototype.makeCollider = function(){
         azimuth:this.azimuth,
         giveJumpFunc:function(oier){
             giveJump(oier);
-            oier.standingOnWarWalker = true;
+            if(oier.standingOnWarWalker===false||oier.standingOnWarWalker===undefined){
+                oier.standingOnWarWalker = thisww;
+            }
+            else{
+                // console.log(dist(oier.x,oier.z,this.x,this.z));
+                // console.log(dist(oier.x,oier.z,oier.standingOnWarWalker.x,oier.standingOnWarWalker.z));
+                if(dist(oier.x,oier.z,this.x,this.z)<dist(oier.x,oier.z,oier.standingOnWarWalker.x,oier.standingOnWarWalker.z)){
+                    oier.standingOnWarWalker = thisww;
+                    // console.log("won");
+                }
+                else{
+                    // console.log("lost");
+                }
+            }
         }
     });
 }
 WarWalker.prototype.friend = function(){
-    if(dist(player.x,player.z,this.x,this.z)<2.4||player.standingOnWarWalker){
+    if(dist(player.x,player.z,this.x,this.z)<2.4||player.standingOnWarWalker===this){
         if(player.y<this.y){
             player.y = this.y+2.11+this.h;
             player.x = this.x;
             player.z = this.z;
         }
 
-        if(player.standingOnWarWalker){
-            if(abs(this.azimuth-player.azimuth)<=3){
-                this.azimuth = player.azimuth;
-            }
-            else{
-                this.azimuth = angTo(this.azimuth,player.azimuth,3);
-            }
+        if(player.standingOnWarWalker===this){
+            this.path = [];
+            this.azimuthTarget = player.azimuth;
             this.x += (player.x+player.xv-this.x)*0.1;
             this.z += (player.z+player.zv-this.z)*0.1;
+            player.standingOnWarWalker = false;
         }
         
-        player.standingOnWarWalker = false;
+    }
+}
+WarWalker.prototype.followPath = function(){
+    if(this.pathBoringTimer>=100){
+        this.path = [];
+        this.pathBoringTimer = 0;
+    }
+    // console.log(this.path.length);
+    if(this.path.length===0){
+        this.pathBoringTimer = 0;
+        return;
+    }
+    this.pathBoringTimer++;
+    let next = this.path[this.path.length-1];
+    next.y = this.y;
+    let dirVec = vScale(vNormalize(vSub(next,this)),0.15);
+    this.x += dirVec.x;
+    this.z += dirVec.z;
+    if(random(0,25)<1){
+        this.azimuthTarget = azimuthBetween(this,this.path[floor(random(0,this.path.length))]);
+    }
+    if(dist(this.x,this.z,next.x,next.z)<1){
+        this.path.pop();
+        this.pathBoringTimer = 0;
     }
 }
 
@@ -6734,7 +6780,7 @@ var playerAndCameraManagement = function(){
     player.makeCollider();
     player.canJump--;
     if(player.canJump<0.0001){player.canJump=0;}
-    player.interactWithColliders();
+    player.interactWithColliders(false,true);
     
     if(inp[220]){player.canJump=1;}
     player.operate();
@@ -8155,7 +8201,7 @@ Level.new(
         }
         
         playerAndCameraManagement();
-        // player.interactWithColliders(); player.operate();
+        // player.interactWithColliders(false,true); player.operate();
         // // if(player.canJump){player.gravity(0.0125);}
         // // else{player.gravity(0.014);}
         // player.gravity(0.015);
@@ -9126,7 +9172,7 @@ Level.new(
     }
 ),
 Level.new(
-    "Zombies or Robots or Something",
+    "Zombies",
     function(){
         resetPlayerAndCameraTo(-6,0,12, 220,0,0);
         
@@ -10091,7 +10137,7 @@ Level.new(
         player.makeCollider();
         player.canJump--;
         if(player.canJump<0.0001){player.canJump=0;}
-        player.interactWithColliders();
+        player.interactWithColliders(false,true);
         
         if(inp[220]){player.canJump=1;}
         player.operate();
@@ -10312,6 +10358,8 @@ Level.new(
     "Armistice Town",
     function(){
         resetPlayerAndCameraTo(-5,2,-8, 0,0,0);
+        this.playerNaturalRad = player.rad;
+
         this.l = 0;
         this.remake = function(){
             solids = [];
@@ -10328,7 +10376,12 @@ Level.new(
         
         // let segSetting = {l:1,h:0.3,w:0.3,col:[200,200,230]};
         // this.limb = Limb.new({x:-6,y:2.5,z:0},{x:-5,y:0,z:0},[segSetting,segSetting,segSetting,{l:1,h:0.45,w:0.45,col:[130,130,160]}],10,0.3);
-        this.warWalker = WarWalker.new(-5,3,0,230);
+        this.warWalkers = [
+            WarWalker.new(5,3,1,230),
+            WarWalker.new(5,3,6,230),
+            WarWalker.new(5,3,11,230),
+            WarWalker.new(5,3,16,230),
+        ];
 
         this.mat = [];
 
@@ -10340,7 +10393,7 @@ Level.new(
         }
         for(let i = 0; i<this.mat.length; i++){
             for(let j = 0; j<this.mat[i].length; j++){
-                if(random(0,8)<1){
+                if((random(0,5)<1&&(i&&j&&i<this.mat.length-1&&j<this.mat.length-1))){
                     this.mat[i][j] = 1;
                     if(i&&!this.mat[i-1][j]){this.mat[i-1][j] = 2;}
                     if(j&&!this.mat[i][j-1]){this.mat[i][j-1] = 2;}
@@ -10348,6 +10401,56 @@ Level.new(
                     if(j<this.mat[i].length-1&&!this.mat[i][j+1]){this.mat[i][j+1] = 2;}
                     solids.push(WindowBlock.new(i*7+3.5,4,j*7+3.5,3.5,4,3.5,0,[90,90,100],0.15,0.85,[100,180,255,80]));
                 }
+            }
+        }
+
+        this.bfsWanderPath = function(startX,startZ){
+            let startI = floor(startX/7);
+            let startJ = floor(startZ/7);
+            if(startI<0||startJ<0||startI>=this.mat.length||startJ>=this.mat[0].length){
+                return [];
+            }
+
+            let ar = oCopy(this.mat);
+            let from = oCopy(this.mat); // elements are d. for dirx[d], dirz[d] pointing back to start
+            let queueIn = [], queueOut = [];
+            queueIn.push({i:startI,j:startJ});
+            let dests = [];
+            ar[startI][startJ] = 3;
+            while(queueIn.length+queueOut.length>0){
+                if(queueOut.length===0){
+                    for(let k = queueIn.length-1; k>=0; k--){
+                        queueOut.push(queueIn[k]);
+                    }
+                    queueIn = [];
+                }
+                let cur = queueOut.pop();
+                for(let d = 0; d<4; d++){
+                    let next = {i:cur.i+dirx[d],j:cur.j+dirz[d]};
+                    if(next.i<0||next.j<0||next.i>=ar.length||next.j>=ar[0].length||ar[next.i][next.j]===1||ar[next.i][next.j]===3){
+                        continue;
+                    }
+                    queueIn.push(next);
+                    if(ar[next.i][next.j]===0){
+                        dests.push(next);
+                    }
+                    ar[next.i][next.j] = 3;
+                    from[next.i][next.j] = (d+2)%4;
+                }
+            }
+            if(dests.length===0){
+                return [];
+            }
+            else{
+                let ret = [];
+                let bot = dests[floor(random(0,dests.length))];
+                while(bot.i!==startI||bot.j!==startJ){
+                    bot.i+=dirx[from[bot.i][bot.j]];
+                    bot.j+=dirz[from[bot.i][bot.j]];
+                    ret.push({x:bot.i*7+3.5,y:0,z:bot.j*7+3.5});
+                }
+                // ret.reverse();
+                return ret;
             }
         }
     },
@@ -10374,7 +10477,9 @@ Level.new(
         for(var i = 0; i<solids.length; i++){
             solids[i].makeCollider();
         }
-        this.warWalker.makeCollider();
+        for(let ww of this.warWalkers){
+            ww.makeCollider();
+        }
         
         colliders.push({idTag:-1,
             x:0,y:0,z:0,
@@ -10385,6 +10490,13 @@ Level.new(
         
         playerAndCameraManagement();
         
+        if(player.standingOnWarWalker){
+            player.rad = 3.49;
+        }
+        else{
+            player.rad = this.playerNaturalRad;
+        }
+
         createLightVector({x:0.1,y:-1,z:0.2},1,0.1);
         
         drawLattice(0,5,7,0.6,[70,70,80,160]);
@@ -10393,11 +10505,17 @@ Level.new(
         for(var i = 0; i<solids.length; i++){
             solids[i].draw();
         }
-
-        this.warWalker.nature();
-        this.warWalker.friend();
-        this.warWalker.operate();
-        this.warWalker.draw();
+        
+        for(let ww of this.warWalkers){
+            if(ww.path.length===0&&random(0,60)<1){
+                ww.path = this.bfsWanderPath(ww.x,ww.z);
+            }
+            ww.nature();
+            ww.friend();
+            ww.followPath();
+            ww.operate();
+            ww.draw();
+        }
         
         if(player.pov===2){
             player.animate();
@@ -10435,7 +10553,7 @@ Level.new(
 
   wMapUnit.new("demo level",-270,-270,[0,0,0]),
   wMapUnit.new("NPCity",-200,-270,[100,150,200]),
-  wMapUnit.new("Zombies or Robots or Something",-200,-200,[100,0,0]),
+  wMapUnit.new("Zombies",-200,-200,[100,0,0]),
   wMapUnit.new("soft level",-130,-270,[180,180,120]),
 
   wMapUnit.new("Trees Don't Die",-200,0),
@@ -10464,7 +10582,7 @@ Level.new(
   
   screen = "map";
   // skip map:
-  screen = "game"; switchToLevel(levels.length-1); ianime = 101;
+//   screen = "game"; switchToLevel(levels.length-1); ianime = 101;
   drawLogoScreen();
 
 }
